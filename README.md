@@ -25,11 +25,60 @@ An AI-agent skill that reads your own Douyin creator-center analytics in your lo
 
 任何能在你电脑上执行命令的 AI 助手都可以用，比如 Claude Code、Codex、Cursor、Gemini CLI。截图模式还要求它能看图片。
 
-**安装**：skill 本体是仓库里的 [`douyin-account-analysis/`](douyin-account-analysis) 文件夹。直接对你的 AI 助手说「把 https://github.com/Allentide/Betterdouyin 里的 douyin-account-analysis 文件夹装成 skill」，它会自己完成。手动安装的话，把这个文件夹复制到：
+## 安装
 
-- **Claude Code**：`~/.claude/skills/`；如果只想在某个项目里用，就放到那个项目的 `.claude/skills/` 下。
-- **Codex**：`~/.codex/skills/`。
-- **其他工具**：任意位置都可以，然后对 AI 说「读一下 `<路径>/douyin-account-analysis/SKILL.md`，照着帮我分析抖音账号」。
+skill 本体是仓库里的 [`douyin-account-analysis/`](douyin-account-analysis) 文件夹，把它放进你的 AI 工具的 skills 目录就能用。
+
+### 方式一：让 AI 帮你装
+
+直接对你的 AI 助手说：「把 https://github.com/Allentide/Betterdouyin 里的 douyin-account-analysis 文件夹装成 skill」。
+
+### 方式二：用 git 命令
+
+**Mac / Linux**（终端）：
+
+```bash
+git clone --depth 1 https://github.com/Allentide/Betterdouyin.git ~/Betterdouyin
+mkdir -p ~/.claude/skills
+cp -R ~/Betterdouyin/douyin-account-analysis ~/.claude/skills/
+```
+
+**Windows**（PowerShell）：
+
+```powershell
+git clone --depth 1 https://github.com/Allentide/Betterdouyin.git "$HOME\Betterdouyin"
+New-Item -ItemType Directory -Force "$HOME\.claude\skills" | Out-Null
+Copy-Item -Recurse "$HOME\Betterdouyin\douyin-account-analysis" "$HOME\.claude\skills\"
+```
+
+上面装的是 **Claude Code**，所有项目都能用。其他情况把目标目录换掉就行：
+
+| 用在哪里 | 目标目录 |
+|---|---|
+| Claude Code（所有项目） | `~/.claude/skills/` |
+| Claude Code（只在某个项目里用） | `<项目目录>/.claude/skills/` |
+| Codex | `~/.codex/skills/` |
+| 其他 AI 工具 | 任意位置都可以，然后对 AI 说「读一下 `<路径>/douyin-account-analysis/SKILL.md`，照着帮我分析抖音账号」 |
+
+### 更新
+
+**Mac / Linux**：
+
+```bash
+git -C ~/Betterdouyin pull
+rm -rf ~/.claude/skills/douyin-account-analysis
+cp -R ~/Betterdouyin/douyin-account-analysis ~/.claude/skills/
+```
+
+**Windows**（PowerShell）：
+
+```powershell
+git -C "$HOME\Betterdouyin" pull
+Remove-Item -Recurse -Force "$HOME\.claude\skills\douyin-account-analysis"
+Copy-Item -Recurse "$HOME\Betterdouyin\douyin-account-analysis" "$HOME\.claude\skills\"
+```
+
+更新会删掉 Mac 截图模式下编译好的两个小工具，下次使用时 AI 会自动重新编译。
 
 装好之后，对 AI 说「分析我的抖音账号」或者「帮我找同题材点赞最多的作品」就行。
 
