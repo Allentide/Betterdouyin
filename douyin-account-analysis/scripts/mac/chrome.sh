@@ -11,7 +11,8 @@
 #   chrome.sh eval <tab-id> '<code>'   同上，直接传代码
 #   chrome.sh go <tab-id> <url>        让该标签页打开新网址（不切到前台）
 #   chrome.sh url <tab-id>             输出该标签页当前网址
-#   chrome.sh close <tab-id>           关闭该标签页（只关自己打开的）；关掉专用窗口里唯一的标签页，窗口也就关了
+#   chrome.sh close <tab-id>           专用窗口里的标签页只清空成空白页、窗口保持最小化留着下次用；其他标签页直接关闭
+#   chrome.sh quit                     彻底关掉专用窗口（用户要求时才用）
 #   chrome.sh show <tab-id>            把该标签页切到前台并激活 Chrome（截图兜底时用）
 #   chrome.sh tabs                     列出所有标签页 id 和网址
 set -e
@@ -120,8 +121,17 @@ EOF
     f=$(mktemp -t cjs); python3 -c 'import json,sys;print("location.href="+json.dumps(sys.argv[1])+";\"ok\"")' "$2" > "$f"
     run_js_file "$1" "$f"; rm -f "$f" ;;
   url)  with_tab "$1" 'return URL of t' ;;
-  close) with_tab "$1" 'close t
+  close)
+    # 专用窗口「抖音分析（AI 自动操作中）」里的标签页不关，只清空成空白页：窗口保持最小化，下次任务直接复用，
+    # 不用重新建窗口（建窗口时会闪一下）。其他标签页正常关闭。要彻底关掉专用窗口用 quit。
+    with_tab "$1" 'if (given name of w) is "抖音分析（AI 自动操作中）" then
+            execute t javascript "location.href=\"about:blank\";\"ok\""
+            return "cleared (dedicated window kept minimized)"
+          end if
+          close t
           return "closed"' ;;
+  quit)
+    osascript -e 'tell application "Google Chrome" to close (every window whose given name is "抖音分析（AI 自动操作中）")' && echo "dedicated window closed" ;;
   show) osascript - "$1" <<'EOF'
 on run argv
   set tid to (item 1 of argv)

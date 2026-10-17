@@ -57,7 +57,7 @@ scripts/windows/      cdp.ps1（调试模式）、启动抖音分析Chrome.bat�
 |---|---|---|
 | Mac 调试 | `scripts/mac/chrome.sh check` → 输出 ok | 无 |
 | Mac 截图 | `scripts/mac/snap.sh <临时目录> test` 能截到图 | 编译工具：`cd scripts/mac && swiftc -O click.swift -o click && swiftc -O scroll.swift -o scroll && chmod +x snap.sh chrome.sh` |
-| Windows 调试 | `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/windows/cdp.ps1 check` → 输出 ok | 无。连不上就请用户双击 `启动抖音分析Chrome.bat` |
+| Windows 调试 | `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/windows/cdp.ps1 check` → 输出 ok | check 不通过时，**AI 自己执行 `cdp.ps1 launch`**：自动打开专用 Chrome，并在桌面建快捷方式。不要让用户去找脚本。用户只需要在打开的窗口里扫码登录。launch 失败才请用户双击 `scripts/windows/启动抖音分析Chrome.bat` |
 | Windows 截图 | `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/windows/screen.ps1 <临时目录> test` 能截到图 | 无 |
 
 ## 二、工具用法
@@ -78,9 +78,10 @@ scripts/windows/      cdp.ps1（调试模式）、启动抖音分析Chrome.bat�
 - **只在自己 `open` 出来的标签页里操作**，记住它的 id，用完关掉。不要动用户已有的标签页。
 - **全程在后台，不要打扰用户**：
   - Mac 的 `open` 会建一个单独的最小化窗口，只用其中一个标签页。再次 `open` 时复用这个标签页，返回的 id 不变；`go` 是用页面内的 JS 跳转。这样不会弹出窗口，也不会抢焦点。
+  - 只有第一次建这个窗口时会闪一下。所以 `close` 不关这个窗口，只把它清成空白页、保持最小化，下次任务直接复用。用户明确要求时才用 `chrome.sh quit` 把它关掉。
   - 不要用 `show`，也不要用 AppleScript 的 `set URL` 或 `activate`，除非用户同意切到截图模式。
   - 窗口最小化时，滚动加载会变慢，搜索结果要多滚几次（`SCROLL=1` 跑 6 次左右）。
-  - 提交搜索时，页面自己会把 Chrome 切到前台，`chrome.sh js … search_box.js` 已经自动把焦点切回原来的应用。
+  - **搜索不要用搜索框提交**，那样页面会自己把 Chrome 切到前台。正确做法是从任意 douyin.com 页面用 `go` 跳到 `https://www.douyin.com/jingxuan/search/<URL编码的词>?type=general`。用页面内 JS 跳转不会返回 502，也不会抢焦点。`search_box.js` 只在这种跳转不行时备用，它会自动把焦点切回原来的应用，但用户还是会看到 Chrome 闪一下。
 - **每打开一个新页面，先跑一次 `page_state.js`**。结果不是 `ok` 的，就按第三节「遇到问题时怎么提示用户」处理。
 - 页面跳转或点击之后要等 4 到 8 秒再读，数据是异步加载的。读到空数据或 `error`，就再等一下重读。
 - `click_text.js` 和 `search_results.js` 里有占位符 `__XXX__`。用 `js` 命令后面跟 `XXX=值` 来替换，Mac 和 Windows 写法一样，不需要 sed：
@@ -131,7 +132,7 @@ scripts/windows/      cdp.ps1（调试模式）、启动抖音分析Chrome.bat�
 | 情况 | 怎么发现 | 对用户说 |
 |---|---|---|
 | Chrome 没开 | Mac：`chrome.sh check` 输出「Chrome 没有在运行」；Windows 截图模式：`screen.ps1` 输出「Chrome 没有打开窗口」 | 「请先打开 Chrome 浏览器，打开后告诉我。」 |
-| Windows 专用 Chrome 没开 | `cdp.ps1 check` 连不上 | 「请双击桌面上的『抖音分析专用Chrome』。第一次使用的话，请双击 skill 文件夹里 `scripts\windows\启动抖音分析Chrome.bat`。打开后告诉我。」 |
+| Windows 专用 Chrome 没开 | `cdp.ps1 check` 连不上 | 先由 AI 执行 `cdp.ps1 launch`，不用告诉用户。只有 launch 失败时才对用户说：「请双击桌面上的『抖音分析专用Chrome』；没有这个图标的话，请双击 skill 文件夹里的 `scripts\windows\启动抖音分析Chrome.bat`。打开后告诉我。」 |
 | Mac 的 JS 开关没开 | `chrome.sh check` 输出「JS 开关没打开」 | 「请在 Chrome 屏幕最上方的菜单栏点『查看 → 开发者 → 允许 Apple 事件中的 JavaScript』（英文界面是 View → Developer → Allow JavaScript from Apple Events），让它打上 ✓，然后告诉我。」 |
 | macOS 不允许控制 Chrome | 报错里有 `-1743` 或 Not authorized to send Apple events | 「请打开『系统设置 → 隐私与安全性 → 自动化』，在终端（或你用的 AI 应用）下面勾选 Google Chrome，然后告诉我。」 |
 | 截图权限没开 | 截出来的图是空白的，或者只有桌面 | 「请打开『系统设置 → 隐私与安全性 → 屏幕与系统录音』和『辅助功能』，把终端（或你用的 AI 应用）的开关打开，然后把终端退出再重新打开。」 |
@@ -257,17 +258,18 @@ scripts/windows/      cdp.ps1（调试模式）、启动抖音分析Chrome.bat�
 
 **调试模式**：
 1. 先 `open https://www.douyin.com/jingxuan`，等 8 秒，跑 `page_state.js` 确认已登录。
-2. 对每个关键词：执行 `js <id> scripts/js/search_box.js KW=<关键词>`，等 8 秒左右。直接打开 `douyin.com/search/<词>` 经常返回 502，所以统一用搜索框；搜下一个词时，在结果页上再跑一次 search_box 就行。
+2. 对每个关键词：执行 `go <id> https://www.douyin.com/jingxuan/search/<URL编码的词>?type=general`，等 8 秒左右。必须先在 douyin.com 的页面上（第 1 步已经打开），再用 `go` 跳过去；用 AppleScript 直接打开这个链接会返回 502。跳转后跑一次 `page_state.js`，如果是 `error_page`，就改用 `js <id> scripts/js/search_box.js KW=<关键词>`。
+   - 要按「最新发布」或「最多点赞」排序：先执行 `click_text.js TEXT=筛选`，等 2 秒，再执行 `click_text.js TEXT=最新发布`（或 `TEXT=最多点赞`），等 7 秒。「筛选」点一下打开、再点一下关上，点之前先用 page_text 看看「排序依据」是不是已经显示出来了。
 3. 执行 `js <id> scripts/js/search_results.js SCROLL=1` 3 次（窗口最小化时要 6 次左右），每次间隔 3 到 4 秒，用来加载更多结果，一个词一般能拿到 50 条以上。
 4. 再执行 `js <id> scripts/js/search_results.js SCROLL=0`，读出 JSON。每条有 id、链接、图文或视频、张数或时长、发布日期、文案、作者、赞、评、藏、转，以及图文的图片地址。
 
 **截图模式**：
 1. 打开 `https://www.douyin.com/`，点顶部搜索框，`paste` 关键词，`key enter`。
-2. 结果页有「综合 / 视频 / 用户 / 直播」，**图文只出现在「综合」里**。右上角的「筛选」可以试「最多点赞」（还没验证过）。
+2. 结果页有「综合 / 视频 / 用户 / 直播」，**图文只出现在「综合」里**。右上角「筛选」里有：排序依据（综合排序 / 最新发布 / 最多点赞）、发布时间（不限 / 一天内 / 一周内 / 半年内）、视频时长、内容形式（不限 / 视频 / 图文）。
 3. 每个关键词往下滚 2 到 3 屏，从卡片上读：类型、标题、作者、点赞数、日期。
 
 两种模式都要注意：
-- 直接打开搜索链接经常返回 502，要从 douyin.com 首页的搜索框搜：调试模式用 `search_box.js`，截图模式用 `paste` 加 `key enter`。
+- 从浏览器地址栏或 AppleScript 直接打开搜索链接经常返回 502。调试模式在 douyin.com 页面上用 `go` 跳转；截图模式从首页搜索框 `paste` 关键词，再 `key enter`。
 - 排在前面的高赞结果经常和题材无关（比如搜一门课程的名字，排在前面的可能是同一机构的其他课程，甚至是不相干的热门视频），**一定要做相关性筛选**。
 
 ### 3. 筛选出 Top 10
@@ -299,7 +301,23 @@ scripts/windows/      cdp.ps1（调试模式）、启动抖音分析Chrome.bat�
 6. **和自己的差距**（只在账号对标时做）：拿自己同题材表现最好的一条，对着 Top 10 的共性逐项打勾，找出缺了哪几项。纯主题对标时，这一步换成「进入这个题材的机会」：哪些角度已经很拥挤，哪些需求在评论区里反复出现却没人认真回答。
 7. **建议**：给 2 到 3 个下一条作品的具体方案，写清楚标题、封面文字、张数或时长、前三张或前三秒放什么，并注明借鉴了哪几条对标作品。
 
-### 6. 注意
+### 6. 判断一种内容形式是不是「过气了」
+
+用户问「某某类型现在还能做吗」「是不是已经不算优质内容了」时用这一节。抖音官方说过，同一种形式被大量复制后，就不再算优质内容了；但平台内部给内容打的「优质」标签，外人看不到。所以只能用公开数据去看**同质化程度**和**效果有没有在下降**：
+
+1. **取两份样本**：同一个关键词或话题，分别按「最新发布」和「最多点赞」排序，各滚 10 次左右，每份约 120 条。
+2. **按月份统计**：每个月有多少条作品、点赞中位数是多少、点赞 ≥1 万的有几条。发布不到 7 天的作品，赞还在涨，不要拿来比较。
+   - 「最多点赞」样本里，爆款集中在哪几个月：最近一两个月越来越少，就说明在降温。
+   - 「最新发布」样本里，新作品的点赞中位数和爆款比例有没有在下降。
+3. **拆分子形式**：同一个大话题下，常常是老的形式在降温、新的形式在升温。按标题前缀、模板、用到的工具来分组比较，例如「XX 大赏｜我做了个……」和「XX 知识大赏｜……」。
+4. **只剩大号能爆吗**：抽 5 条最近的爆款，看作者粉丝数。只剩大号能爆、小号起不来，说明观众已经腻了，只认头部。
+5. **标题和画面有多雷同**：同一个开头的标题占多少；用 img_urls 或截图看封面像不像。
+6. **评论区**：抽几条最近的作品，看有没有「又是这个」「千篇一律」「看腻了」这类评论。
+7. **结论分三档**：还在上升 / 已经饱和但新形式在起来 / 在降温。每一档都要给出数字依据。还要说明这是根据公开数据推断的，平台内部的优质判断看不到。最后给出可以换的角度，优先选正在升温的子形式。
+
+注意：搜索样本会偏向高赞和较新的作品，不是全部作品，所以只能看趋势，不要把数字当成精确值。
+
+### 7. 注意
 
 - 搜索结果会受登录账号的个性化影响。报告里要写明「这是用你的账号搜出来的结果」。
 - 纯主题对标时，用户可以不登录抖音。但没登录的话，搜索页可能弹出登录框，或者只显示少量结果。遇到这种情况，就请用户在 Chrome 里登录 douyin.com（普通账号就行，不需要是创作者）。

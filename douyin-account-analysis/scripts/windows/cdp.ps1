@@ -1,10 +1,12 @@
 ﻿# Windows 调试模式：通过 Chrome 远程调试接口（CDP，127.0.0.1:9222）操作「抖音分析专用 Chrome」，不需要窗口在前台，也不动鼠标。
-# 前提：用户已双击「启动抖音分析Chrome.bat」打开了专用 Chrome，并在里面登录过抖音。
+# 专用 Chrome 由 AI 执行 `cdp.ps1 launch` 自动打开（单独的一份 Chrome 资料，和用户平时的 Chrome 互不影响），
+# 用户只需要第一次在这个窗口里扫码登录抖音。「启动抖音分析Chrome.bat」是备用方案，launch 失败时才让用户双击。
 # 只用 Windows 自带的 PowerShell 5.1 / .NET，不需要装任何东西。
 #
 # 由 AI 助手执行（用户不需要手动运行）：
 #   powershell -NoProfile -ExecutionPolicy Bypass -File cdp.ps1 <命令> [参数]
 # 命令：
+#   launch                    自动打开专用 Chrome（已经开着就什么都不做），等调试接口就绪；首次使用会顺便建桌面快捷方式
 #   check                     检查专用 Chrome 是否已启动、调试接口能否连上
 #   tabs                      列出所有标签页 id 和网址
 #   open <url>                新开后台标签页，输出标签页 id
@@ -61,10 +63,42 @@ function Invoke-Js([string]$id, [string]$code) {
   return $res.result.result.value
 }
 
+function Find-Chrome {
+  $cands = @(
+    "$env:ProgramFiles\Google\Chrome\Application\chrome.exe",
+    "${env:ProgramFiles(x86)}\Google\Chrome\Application\chrome.exe",
+    "$env:LOCALAPPDATA\Google\Chrome\Application\chrome.exe"
+  )
+  foreach ($c in $cands) { if ($c -and (Test-Path $c)) { return $c } }
+  $reg = Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\chrome.exe', 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\chrome.exe' -ErrorAction SilentlyContinue | Select-Object -First 1
+  if ($reg -and $reg.'(default)' -and (Test-Path $reg.'(default)')) { return $reg.'(default)' }
+  return $null
+}
+
+function Test-Debug { try { $null = Invoke-RestMethod -Uri "$base/json/version" -TimeoutSec 2; return $true } catch { return $false } }
+
 switch ($cmd) {
+  'launch' {
+    if (Test-Debug) { 'ok already running'; break }
+    $chrome = Find-Chrome
+    if (-not $chrome) { '没有找到 Chrome：请用户先安装 Google Chrome'; exit 1 }
+    $profileDir = Join-Path $env:LOCALAPPDATA 'DouyinAnalysisChrome'
+    $chromeArgs = @('--remote-debugging-port=9222', '--remote-debugging-address=127.0.0.1', "--user-data-dir=`"$profileDir`"", '--no-first-run', 'https://creator.douyin.com/')
+    Start-Process -FilePath $chrome -ArgumentList $chromeArgs | Out-Null
+    # 顺便在桌面建快捷方式「抖音分析专用Chrome」，以后用户也可以自己双击打开
+    try {
+      $lnk = Join-Path ([Environment]::GetFolderPath('Desktop')) '抖音分析专用Chrome.lnk'
+      if (-not (Test-Path $lnk)) {
+        $sc = (New-Object -ComObject WScript.Shell).CreateShortcut($lnk)
+        $sc.TargetPath = $chrome; $sc.Arguments = ($chromeArgs -join ' '); $sc.IconLocation = "$chrome,0"; $sc.Save()
+      }
+    } catch {}
+    for ($i = 0; $i -lt 20; $i++) { Start-Sleep -Seconds 1; if (Test-Debug) { 'ok launched'; exit 0 } }
+    '专用 Chrome 已启动，但调试接口 20 秒内没有就绪：请检查是否被安全软件拦截，或让用户双击 scripts\windows\启动抖音分析Chrome.bat'; exit 1
+  }
   'check' {
     try { $v = Invoke-RestMethod -Uri "$base/json/version" -TimeoutSec 3; "ok $($v.Browser)" }
-    catch { "专用 Chrome 没有启动或调试接口连不上：请让用户双击「启动抖音分析Chrome.bat」"; exit 1 }
+    catch { "专用 Chrome 没有启动或调试接口连不上：先执行 cdp.ps1 launch 自动打开"; exit 1 }
   }
   'tabs' { Get-Targets | Where-Object { $_.type -eq 'page' } | ForEach-Object { "$($_.id)  $($_.url)" } }
   'open' {
@@ -87,5 +121,5 @@ switch ($cmd) {
     $out
   }
   'close' { $null = Invoke-RestMethod -Uri "$base/json/close/$a1"; 'closed' }
-  default { Get-Content $PSCommandPath -Encoding UTF8 -TotalCount 18 | Select-Object -Skip 1; exit 1 }
+  default { Get-Content $PSCommandPath -Encoding UTF8 -TotalCount 22 | Select-Object -Skip 1; exit 1 }
 }
