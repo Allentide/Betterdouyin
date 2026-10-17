@@ -98,6 +98,25 @@ Copy-Item -Recurse "$HOME\Betterdouyin\douyin-account-analysis" "$HOME\.claude\s
 
 ### 4.4 更新
 
+**方式一：让 AI 帮你更新（最省事）**
+
+不用自己敲命令。复制下面这段话，发给你的 AI 助手：
+
+```
+帮我把抖音分析 skill 更新到最新版：https://github.com/Allentide/Betterdouyin
+```
+
+AI 会找到你装 skill 的位置，下载最新版替换掉旧版，然后告诉你这次更新了什么。
+
+> **给 AI 的更新说明**：用户要求更新本 skill 时，请按以下步骤执行：
+> 1. 找到 skill 当前装在哪里，也就是 `douyin-account-analysis/SKILL.md` 所在的文件夹。常见位置：`~/.claude/skills/`、`<项目>/.claude/skills/`、`~/.codex/skills/`。装了好几份的话，每一份都要更新。
+> 2. 获取最新版：`~/Betterdouyin` 已经存在的话，执行 `git -C ~/Betterdouyin pull`；不存在就 `git clone --depth 1 https://github.com/Allentide/Betterdouyin.git ~/Betterdouyin`。git 用不了的话，就下载 `https://github.com/Allentide/Betterdouyin/archive/refs/heads/main.zip` 解压。
+> 3. 删掉旧的 `douyin-account-analysis` 文件夹，把新版的整个复制过去。只动这个文件夹，别的都不要碰。
+> 4. 告诉用户：更新了哪几份、新版的提交号，以及这次更新的主要内容（看 `git log` 里新增的提交）。
+> 5. 命令都由你来执行，不要让用户自己在终端里敲。
+
+**方式二：用 git 命令**
+
 **Mac / Linux**：
 
 ```bash
