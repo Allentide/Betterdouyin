@@ -1,6 +1,6 @@
 <p align="center">
   <img src="assets/wechat-qr.jpg" width="200" alt="微信二维码"><br>
-  <sub>扫码加我微信：交流使用心得、反馈问题、一起开发</sub>
+  <sub>扫码联系我，加入自媒体博主交流群，和众多博主一起交流运营心得</sub>
 </p>
 
 <div align="center">
@@ -234,7 +234,7 @@ douyin-account-analysis/      skill 本体，整个文件夹就是一个 skill
 
 - [提交问题或建议](https://github.com/Allentide/Betterdouyin/issues/new)
 - [配置指南](douyin-account-analysis/SETUP.md)
-- 加我微信交流：
+- 扫码联系我，加入微信交流群，和众多自媒体博主一起交流运营心得：
 
 <p>
   <img src="assets/wechat-qr.jpg" width="240" alt="微信二维码">
