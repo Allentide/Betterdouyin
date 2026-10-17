@@ -228,6 +228,7 @@ douyin-account-analysis/      skill 本体，整个文件夹就是一个 skill
 - 等维护者审核，并加上 `invite-to-collaborator` 标签。GitHub 不一定会及时提醒我，提交后可以加我微信催我一下。
 - GitHub Actions 会自动给你发送协作者邀请，然后留言并关闭这个 Issue。
 - 在 GitHub 通知或注册邮箱里接受邀请，就能一起开发了。
+- 所有改动都通过 Pull Request 提交：新建分支 → 提交改动 → 发起 PR。维护者审核通过后才会合并到 `main`，不能直接往 `main` 推送。
 
 ## 10. 更多
 
