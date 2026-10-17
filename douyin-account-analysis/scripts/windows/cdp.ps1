@@ -16,6 +16,13 @@
 #   eval <id> <code>          同上，直接传代码
 #   shot <id> <out.png>       只截这个标签页（不需要在前台），用于读图表或核对
 #   close <id>                关闭该标签页（只关自己打开的）
+#   slow                      触发过抖音安全验证后执行：之后 2 小时内所有间隔翻倍、每小时上限减半
+#   pace                      查看最近一小时的访问次数和当前限速状态
+#
+# 防风控限速（open / go / 滚动 / 点击都会自动等待，不用另外 sleep）：
+#   打开页面：douyin.com 间隔随机 8~15 秒，创作者中心 3~6 秒；每打开 10 个页面额外休息 60~90 秒；
+#   每小时最多打开 60 个页面；同一页面最多滚动加载 8 次，每次间隔随机 3~6 秒；点击筛选、搜索框 3~6 秒。
+#   超过上限时以退出码 3 结束并说明原因，这时要停下来，告诉用户稍后再继续，不要绕过。
 
 param([string]$cmd, [string]$a1, [string]$a2, [Parameter(ValueFromRemainingArguments = $true)][string[]]$rest)
 $ErrorActionPreference = 'Stop'
@@ -54,6 +61,39 @@ function Invoke-Cdp([string]$id, [string]$method, $params) {
     if ($ws.State -eq 'Open') { $ws.CloseAsync([System.Net.WebSockets.WebSocketCloseStatus]::NormalClosure, '', $ct).Wait() }
     $ws.Dispose()
   }
+}
+
+# ---------- 防风控限速 ----------
+$PaceLog = Join-Path $env:TEMP 'douyin-skill-pace.log'
+$SlowFlag = Join-Path $env:TEMP 'douyin-skill-slow'
+function Get-Now { [DateTimeOffset]::UtcNow.ToUnixTimeSeconds() }
+function Invoke-Pace([string]$kind, [string]$url) {
+  $now = Get-Now; $factor = 1; $rnd = New-Object System.Random
+  if ((Test-Path $SlowFlag) -and ([long](Get-Content $SlowFlag -TotalCount 1) -gt $now)) { $factor = 2 }
+  $lines = @()
+  if (Test-Path $PaceLog) { $lines = @(Get-Content $PaceLog | Where-Object { $_ -and ([long]($_.Split(' ')[0]) -ge ($now - 3600)) }) }
+  Set-Content -Path $PaceLog -Value $lines
+  $gap = 0
+  switch ($kind) {
+    'nav' {
+      $cnt = @($lines | Where-Object { $_.Split(' ')[1] -eq 'nav' }).Count
+      if ($cnt -ge [int](60 / $factor)) { [Console]::Error.WriteLine("已达到每小时访问上限（$cnt 个页面），为避免触发抖音风控，请停下来，告诉用户过一段时间再继续"); exit 3 }
+      if ($url -like '*creator.douyin.com*') { $gap = (3 + $rnd.Next(4)) * $factor } else { $gap = (8 + $rnd.Next(8)) * $factor }
+      if ($cnt -gt 0 -and ($cnt % 10) -eq 0) { $gap += (60 + $rnd.Next(31)) * $factor; [Console]::Error.WriteLine("已连续打开 $cnt 个页面，休息 $gap 秒防风控…") }
+    }
+    'scroll' {
+      $n = 0
+      foreach ($l in $lines) { $k = $l.Split(' ')[1]; if ($k -eq 'nav') { $n = 0 } elseif ($k -eq 'scroll') { $n++ } }
+      if ($n -ge 8) { [Console]::Error.WriteLine("这个页面已经滚动加载 $n 次，够用了；再多容易触发风控"); exit 3 }
+      $gap = (3 + $rnd.Next(4)) * $factor
+    }
+    'light' { $gap = (3 + $rnd.Next(4)) * $factor }
+  }
+  if ($lines.Count -gt 0) {
+    $elapsed = $now - [long]($lines[-1].Split(' ')[0])
+    if ($elapsed -lt $gap) { Start-Sleep -Seconds ($gap - $elapsed) }
+  }
+  Add-Content -Path $PaceLog -Value ("{0} {1}" -f (Get-Now), $kind)
 }
 
 function Invoke-Js([string]$id, [string]$code) {
@@ -102,13 +142,16 @@ switch ($cmd) {
   }
   'tabs' { Get-Targets | Where-Object { $_.type -eq 'page' } | ForEach-Object { "$($_.id)  $($_.url)" } }
   'open' {
+    Invoke-Pace 'nav' $a1
     $u = [Uri]::EscapeUriString($a1)
     try { $t = Invoke-RestMethod -Method Put -Uri "$base/json/new?$u" } catch { $t = Invoke-RestMethod -Uri "$base/json/new?$u" }
     $t.id
   }
-  'go'    { $null = Invoke-Cdp $a1 'Page.navigate' @{ url = $a2 }; 'ok' }
+  'go'    { Invoke-Pace 'nav' $a2; $null = Invoke-Cdp $a1 'Page.navigate' @{ url = $a2 }; 'ok' }
   'url'   { (Get-Target $a1).url }
   'js'    {
+    if ($a2 -like '*search_results.js' -and ($rest -contains 'SCROLL=1')) { Invoke-Pace 'scroll' '' }
+    elseif ($a2 -like '*click_text.js' -or $a2 -like '*search_box.js') { Invoke-Pace 'light' '' }
     $code = [IO.File]::ReadAllText((Resolve-Path $a2), [Text.Encoding]::UTF8)
     foreach ($kv in $rest) { $k, $v = $kv -split '=', 2; $code = $code.Replace("__${k}__", $v) }
     Invoke-Js $a1 $code
@@ -120,6 +163,12 @@ switch ($cmd) {
     [IO.File]::WriteAllBytes($out, [Convert]::FromBase64String($res.result.data))
     $out
   }
+  'slow'  { Set-Content -Path $SlowFlag -Value ((Get-Now) + 7200); '已进入慢速模式：之后 2 小时内间隔翻倍、每小时上限减半' }
+  'pace'  {
+    $now = Get-Now; $lines = @(); if (Test-Path $PaceLog) { $lines = @(Get-Content $PaceLog | Where-Object { $_ -and ([long]($_.Split(' ')[0]) -ge ($now - 3600)) }) }
+    "最近一小时：打开页面 $(@($lines | Where-Object { $_.Split(' ')[1] -eq 'nav' }).Count) 次，滚动 $(@($lines | Where-Object { $_.Split(' ')[1] -eq 'scroll' }).Count) 次"
+    if ((Test-Path $SlowFlag) -and ([long](Get-Content $SlowFlag -TotalCount 1) -gt $now)) { "慢速模式：还剩 $([int](([long](Get-Content $SlowFlag -TotalCount 1) - $now) / 60)) 分钟" } else { '正常速度' }
+  }
   'close' { $null = Invoke-RestMethod -Uri "$base/json/close/$a1"; 'closed' }
-  default { Get-Content $PSCommandPath -Encoding UTF8 -TotalCount 22 | Select-Object -Skip 1; exit 1 }
+  default { Get-Content $PSCommandPath -Encoding UTF8 -TotalCount 30 | Select-Object -Skip 1; exit 1 }
 }

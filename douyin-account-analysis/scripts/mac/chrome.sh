@@ -15,6 +15,13 @@
 #   chrome.sh quit                     彻底关掉专用窗口（用户要求时才用）
 #   chrome.sh show <tab-id>            把该标签页切到前台并激活 Chrome（截图兜底时用）
 #   chrome.sh tabs                     列出所有标签页 id 和网址
+#   chrome.sh slow                     触发过抖音安全验证后执行：之后 2 小时内所有间隔翻倍、每小时上限减半
+#   chrome.sh pace                     查看最近一小时的访问次数和当前限速状态
+#
+# 防风控限速（open / go / 滚动 / 点击都会自动等待，不用另外 sleep）：
+#   打开页面：douyin.com 间隔随机 8~15 秒，创作者中心 3~6 秒；每打开 10 个页面额外休息 60~90 秒；
+#   每小时最多打开 60 个页面；同一页面最多滚动加载 8 次，每次间隔随机 3~6 秒；点击筛选、搜索框 3~6 秒。
+#   超过上限时命令以退出码 3 结束并说明原因，这时要停下来，告诉用户稍后再继续，不要绕过。
 set -e
 cmd=$1; shift || true
 
@@ -54,6 +61,37 @@ end run
 EOF
 }
 
+# ---------- 防风控限速 ----------
+PACE_LOG="${TMPDIR:-/tmp}/douyin-skill-pace.log"
+SLOW_FLAG="${TMPDIR:-/tmp}/douyin-skill-slow"
+pace() { # $1 = nav | scroll | light，$2 = 网址（nav 时用来区分创作者中心）
+  local kind=$1 url=$2 now factor=1 last gap cnt
+  now=$(date +%s)
+  [ -f "$SLOW_FLAG" ] && [ "$(cat "$SLOW_FLAG")" -gt "$now" ] 2>/dev/null && factor=2
+  touch "$PACE_LOG"
+  # 只保留最近一小时的记录
+  awk -v t=$((now-3600)) '$1>=t' "$PACE_LOG" > "$PACE_LOG.tmp" && mv "$PACE_LOG.tmp" "$PACE_LOG"
+  case $kind in
+    nav)
+      cnt=$(awk '$2=="nav"' "$PACE_LOG" | wc -l | tr -d ' ')
+      if [ "$cnt" -ge $((60 / factor)) ]; then
+        echo "已达到每小时访问上限（$cnt 个页面），为避免触发抖音风控，请停下来，告诉用户过一段时间再继续" >&2; exit 3
+      fi
+      case "$url" in *creator.douyin.com*) gap=$(( (3 + RANDOM % 4) * factor ));; *) gap=$(( (8 + RANDOM % 8) * factor ));; esac
+      if [ "$cnt" -gt 0 ] && [ $((cnt % 10)) -eq 0 ]; then
+        gap=$(( gap + (60 + RANDOM % 31) * factor )); echo "已连续打开 $cnt 个页面，休息 ${gap} 秒防风控…" >&2
+      fi ;;
+    scroll)
+      cnt=$(awk 'BEGIN{n=0} $2=="nav"{n=0} $2=="scroll"{n++} END{print n}' "$PACE_LOG")
+      if [ "$cnt" -ge 8 ]; then echo "这个页面已经滚动加载 $cnt 次，够用了；再多容易触发风控" >&2; exit 3; fi
+      gap=$(( (3 + RANDOM % 4) * factor )) ;;
+    light) gap=$(( (3 + RANDOM % 4) * factor )) ;;
+  esac
+  last=$(tail -1 "$PACE_LOG" 2>/dev/null | awk '{print $1}')
+  if [ -n "$last" ] && [ $((now - last)) -lt "$gap" ]; then sleep $((gap - (now - last))); fi
+  echo "$(date +%s) $kind" >> "$PACE_LOG"
+}
+
 # 有些页面动作（例如提交搜索）会让 Chrome 自己跳到前台；这里记下原来的前台应用，事后切回去
 front_app() { osascript -e 'tell application "System Events" to return name of first process whose frontmost is true'; }
 give_back_focus() {
@@ -70,6 +108,7 @@ case $cmd in
     r=$(osascript -e 'tell application "Google Chrome" to execute active tab of front window javascript "1+1"' 2>&1) || true
     if [ "$r" = "2" ]; then echo ok; else echo "JS 开关没打开或被拒绝: $r"; exit 1; fi ;;
   open)
+    pace nav "$1"
     # 所有自动操作都放在一个单独的、最小化的窗口「抖音分析（AI 自动操作中）」里，不碰用户自己的窗口和标签页。
     # 这个窗口只用一个标签页：第一次 open 时建窗口并最小化，之后的 open 只是让这个标签页换网址（往最小化窗口里加标签页会把它弹出来）。
     # 建窗口时 Chrome 会被系统切到前台，所以结束时把焦点还给原来的应用。最小化时页面照样加载，只是滚动加载更慢，要多滚几次。
@@ -109,6 +148,10 @@ EOF
     ;;
   js)
     tid=$1; src="$(cd "$(dirname "$2")" && pwd)/$(basename "$2")"; shift 2
+    case "$src" in
+      *search_results.js) case " $* " in *" SCROLL=1 "*) pace scroll ;; esac ;;
+      *click_text.js|*search_box.js) pace light ;;
+    esac
     prev=$(front_app)
     if [ $# -eq 0 ]; then run_js_file "$tid" "$src"; else
       code=$(cat "$src"); for kv in "$@"; do code=${code//__${kv%%=*}__/${kv#*=}}; done
@@ -117,6 +160,7 @@ EOF
     case "$src" in *search_box.js) give_back_focus "$prev" ;; esac ;;
   eval) f=$(mktemp -t cjs); printf '%s' "$2" > "$f"; run_js_file "$1" "$f"; rm -f "$f" ;;
   go)
+    pace nav "$2"
     # 用页面里的 JS 跳转，不用 AppleScript 的 set URL：后者会把最小化窗口弹出来、把 Chrome 切到前台
     f=$(mktemp -t cjs); python3 -c 'import json,sys;print("location.href="+json.dumps(sys.argv[1])+";\"ok\"")' "$2" > "$f"
     run_js_file "$1" "$f"; rm -f "$f" ;;
@@ -153,6 +197,12 @@ on run argv
 end run
 EOF
     ;;
+  slow)
+    echo $(( $(date +%s) + 7200 )) > "$SLOW_FLAG"; echo "已进入慢速模式：之后 2 小时内间隔翻倍、每小时上限减半" ;;
+  pace)
+    now=$(date +%s); touch "$PACE_LOG"
+    echo "最近一小时：打开页面 $(awk -v t=$((now-3600)) '$1>=t && $2=="nav"' "$PACE_LOG" | wc -l | tr -d ' ') 次，滚动 $(awk -v t=$((now-3600)) '$1>=t && $2=="scroll"' "$PACE_LOG" | wc -l | tr -d ' ') 次"
+    if [ -f "$SLOW_FLAG" ] && [ "$(cat "$SLOW_FLAG")" -gt "$now" ]; then echo "慢速模式：还剩 $(( ($(cat "$SLOW_FLAG") - now) / 60 )) 分钟"; else echo "正常速度"; fi ;;
   tabs)
     osascript -e 'tell application "Google Chrome"' -e 'set out to ""' -e 'repeat with w in windows' -e 'repeat with t in tabs of w' -e 'set out to out & (id of t) & "  " & (URL of t) & linefeed' -e 'end repeat' -e 'end repeat' -e 'return out' -e 'end tell' ;;
   *) sed -n '2,15p' "$0"; exit 1 ;;
