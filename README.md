@@ -19,28 +19,29 @@ An AI-agent skill that reads your own Douyin creator-center analytics in your lo
 | 原理 | 直接读网页里的数据（Mac 用 Apple 事件，Windows 用 Chrome 远程调试接口） | 截屏看页面，模拟鼠标键盘去点 |
 | 运行时能不能用电脑 | 能，在后台标签页里跑 | 不能 |
 
-**用户不需要输入任何命令**：配置只要点菜单、点「允许」或者双击文件，命令由 AI 自己执行。具体步骤见 [SETUP.md](SETUP.md)。
+**用户不需要输入任何命令**：配置只要点菜单、点「允许」或者双击文件，命令由 AI 自己执行。具体步骤见 [SETUP.md](douyin-account-analysis/SETUP.md)。
 
 ## 适用的 AI 助手
 
 任何能在你电脑上执行命令的 AI 助手都可以用，比如 Claude Code、Codex、Cursor、Gemini CLI。截图模式还要求它能看图片。
 
-**安装**（下面的命令可以直接交给你的 AI 助手去执行）：
+**安装**：skill 本体是仓库里的 [`douyin-account-analysis/`](douyin-account-analysis) 文件夹。直接对你的 AI 助手说「把 https://github.com/Allentide/Betterdouyin 里的 douyin-account-analysis 文件夹装成 skill」，它会自己完成。手动安装的话，把这个文件夹复制到：
 
-- **Claude Code**：把本仓库克隆到 `~/.claude/skills/douyin-account-analysis`（如果只想在某个项目里用，就放到那个项目的 `.claude/skills/` 下）。
-- **Codex**：克隆到 `~/.codex/skills/douyin-account-analysis`。
-- **其他工具**：克隆到任意位置，然后对 AI 说「读一下 `<路径>/SKILL.md`，照着帮我分析抖音账号」。
+- **Claude Code**：`~/.claude/skills/`；如果只想在某个项目里用，就放到那个项目的 `.claude/skills/` 下。
+- **Codex**：`~/.codex/skills/`。
+- **其他工具**：任意位置都可以，然后对 AI 说「读一下 `<路径>/douyin-account-analysis/SKILL.md`，照着帮我分析抖音账号」。
 
 装好之后，对 AI 说「分析我的抖音账号」或者「帮我找同题材点赞最多的作品」就行。
 
 ## 目录
 
 ```
-SKILL.md          给 AI 看的操作手册：选模式、工具用法、安全规则、采集清单、分析方法、对标流程
-SETUP.md          给用户看的配置指南
-scripts/js/       调试模式的页面脚本（Mac 和 Windows 通用）
-scripts/mac/      chrome.sh（调试模式）、snap.sh、click.swift、scroll.swift（截图模式）
-scripts/windows/  cdp.ps1（调试模式）、启动抖音分析Chrome.bat（双击启动专用 Chrome）、screen.ps1（截图模式）
+douyin-account-analysis/      skill 本体，整个文件夹就是一个 skill
+  SKILL.md                    给 AI 看的操作手册：选模式、工具用法、安全规则、采集清单、分析方法、对标流程
+  SETUP.md                    给用户看的配置指南
+  scripts/js/                 调试模式的页面脚本（Mac 和 Windows 通用）
+  scripts/mac/                chrome.sh（调试模式）、snap.sh、click.swift、scroll.swift（截图模式）
+  scripts/windows/            cdp.ps1（调试模式）、启动抖音分析Chrome.bat（双击启动专用 Chrome）、screen.ps1（截图模式）
 ```
 
 ## 注意
