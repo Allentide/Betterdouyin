@@ -29,9 +29,30 @@ An AI-agent skill that reads your own Douyin creator-center analytics in your lo
 
 skill 本体是仓库里的 [`douyin-account-analysis/`](douyin-account-analysis) 文件夹，把它放进你的 AI 工具的 skills 目录就能用。
 
-### 方式一：让 AI 帮你装
+### 方式一：把链接发给 AI，让它自己下载和配置（最省事）
 
-直接对你的 AI 助手说：「把 https://github.com/Allentide/Betterdouyin 里的 douyin-account-analysis 文件夹装成 skill」。
+不用自己敲任何命令。复制下面这段话，发给你的 AI 助手（Claude Code、Codex、Cursor 等）：
+
+```
+帮我安装并配置这个抖音分析 skill：https://github.com/Allentide/Betterdouyin
+```
+
+AI 会按照下面「给 AI 的安装说明」完成这些事：
+1. 下载项目，把 skill 装到它自己的 skills 目录；
+2. 判断你的电脑是 Mac 还是 Windows，问你用调试模式还是截图模式；
+3. 告诉你需要手动点哪几个菜单、开哪几个权限；
+4. 运行自检，确认能用。
+
+装好以后，直接说「分析我的抖音账号」就能开始。
+
+#### 给 AI 的安装说明
+
+> 如果你是 AI 助手，用户把本仓库链接发给你并要求安装，请按以下步骤执行：
+> 1. 用 git 克隆本仓库，克隆不了就下载 zip：`https://github.com/Allentide/Betterdouyin/archive/refs/heads/main.zip`。
+> 2. 把 `douyin-account-analysis/` 文件夹复制到你自己的 skills 目录。Claude Code 是 `~/.claude/skills/`，Codex 是 `~/.codex/skills/`；如果你不支持 skill，就记住这个文件夹的路径，以后每次执行任务前先读里面的 `SKILL.md`。
+> 3. 阅读 `douyin-account-analysis/SKILL.md` 的第一节：判断系统，问用户选调试模式还是截图模式，把 `SETUP.md` 里对应的用户操作步骤原样告诉用户，然后执行自检。
+> 4. 需要执行的命令都由你来执行。不要让用户自己在终端里敲命令；用户只需要点菜单、点「允许」、双击文件。
+> 5. 安装完成后，告诉用户：装在哪里、选的是哪种模式、自检结果如何，以及之后怎么使用（直接说「分析我的抖音账号」）。
 
 ### 方式二：用 git 命令
 
