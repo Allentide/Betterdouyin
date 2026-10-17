@@ -1,8 +1,23 @@
-# Betterdouyin
+<div align="center">
+
+# Betterdouyin · 抖音作品 AI 复盘助手
+
+**让 AI 读懂你的抖音数据：账号诊断 + 同题材爆款 Top 10 对标**
+
+*Let your AI agent read your Douyin analytics, diagnose every post, and benchmark you against the top-10 posts on your topic.*
+
+![License](https://img.shields.io/badge/license-MIT-green)
+![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows-blue)
+![Browser](https://img.shields.io/badge/browser-Chrome-yellow)
+![Agent](https://img.shields.io/badge/AI-Claude%20Code%20%7C%20Codex%20%7C%20Cursor%20%7C%20Gemini%20CLI-purple)
+
+[能做什么](#能做什么) · [支持的环境](#支持的环境) · [安装](#安装) · [配置指南](douyin-account-analysis/SETUP.md) · [注意事项](#注意)
+
+</div>
+
+---
 
 让 AI 助手在你自己电脑的 Chrome 里打开抖音创作者中心，读取你每条作品的数据，告诉你问题出在哪、下一条该怎么做；再去搜同题材点赞最多的 10 条作品，拆解别人做对了什么。
-
-An AI-agent skill that reads your own Douyin creator-center analytics in your local Chrome, diagnoses each post, and benchmarks you against the top-10 most-liked posts on the same topic.
 
 ## 能做什么
 
