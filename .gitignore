@@ -1,0 +1,4 @@
+.DS_Store
+# Mac 截图模式的编译产物，由 AI 在首次使用时本地编译
+scripts/mac/click
+scripts/mac/scroll
