@@ -1,0 +1,38 @@
+name: 申请加入开发
+description: 想一起开发 Betterdouyin？填写这张表，维护者审核后会自动邀请你成为仓库协作者。
+title: "[加入开发] "
+labels: ["join-request"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        提交后，维护者审核通过会给这个 Issue 加上 `invite-to-collaborator` 标签，GitHub Actions 会自动给你（**提交这个 Issue 的账号**）发送协作者邀请。
+        邀请会出现在 GitHub 通知和你的注册邮箱里，接受后就能参与开发。
+  - type: input
+    id: github
+    attributes:
+      label: 你的 GitHub 账号
+      description: 默认邀请提交这个 Issue 的账号；这里再填一遍方便核对。
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: 感兴趣的方向
+      multiple: true
+      options:
+        - Windows 测试与适配
+        - Mac 调试模式 / 截图模式
+        - 分析方法与指标
+        - 同题材对标 / 爆款拆解
+        - 文档与翻译
+        - 其他
+    validations:
+      required: true
+  - type: textarea
+    id: plan
+    attributes:
+      label: 想参与的内容
+      description: 想做什么、有什么经验，或者已经发现的问题。
+    validations:
+      required: true

@@ -1,3 +1,8 @@
+<p align="center">
+  <img src="assets/wechat-qr.jpg" width="200" alt="微信二维码"><br>
+  <sub>扫码加我微信：交流使用心得、反馈问题、一起开发</sub>
+</p>
+
 <div align="center">
 
 # Betterdouyin · 抖音作品 AI 复盘助手
@@ -9,7 +14,7 @@
 ![Browser](https://img.shields.io/badge/browser-Chrome-yellow)
 ![Agent](https://img.shields.io/badge/AI-Claude%20Code%20%7C%20Codex%20%7C%20Cursor%20%7C%20Gemini%20CLI-purple)
 
-[1. 能做什么](#1-能做什么) · [2. 能帮你看清什么](#2-能帮你看清什么) · [5. 安装](#5-安装) · [6. 使用方法](#6-使用方法) · [配置指南](douyin-account-analysis/SETUP.md) · [8. 注意](#8-注意)
+[1. 能做什么](#1-能做什么) · [2. 能帮你看清什么](#2-能帮你看清什么) · [5. 安装](#5-安装) · [6. 使用方法](#6-使用方法) · [配置指南](douyin-account-analysis/SETUP.md) · [8. 注意](#8-注意) · [9. 加入开发团队](#9-加入开发团队)
 
 </div>
 
@@ -215,6 +220,25 @@ douyin-account-analysis/      skill 本体，整个文件夹就是一个 skill
 - 同一时间只让一个 AI 控制 Chrome。
 - 欢迎提 Issue 和 PR。
 
-## 9. License
+## 9. 加入开发团队
+
+欢迎一起把 Betterdouyin 做得更好，尤其欢迎在 Windows 上测试、改进分析方法、补充文档的朋友。
+
+- 点击 **[提交加入申请](https://github.com/Allentide/Betterdouyin/issues/new?template=join-dev-team.yml)**，填写你的 GitHub 账号、感兴趣的方向和想参与的内容，然后创建 Issue。
+- 等维护者审核，并加上 `invite-to-collaborator` 标签。GitHub 不一定会及时提醒我，提交后可以加我微信催我一下。
+- GitHub Actions 会自动给你发送协作者邀请，然后留言并关闭这个 Issue。
+- 在 GitHub 通知或注册邮箱里接受邀请，就能一起开发了。
+
+## 10. 更多
+
+- [提交问题或建议](https://github.com/Allentide/Betterdouyin/issues/new)
+- [配置指南](douyin-account-analysis/SETUP.md)
+- 加我微信交流：
+
+<p>
+  <img src="assets/wechat-qr.jpg" width="240" alt="微信二维码">
+</p>
+
+## 11. License
 
 [MIT](LICENSE)
